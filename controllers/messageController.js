@@ -82,16 +82,3 @@ exports.deleteMessage = async (req, res) => {
     res.status(500).json({ error: "Failed to delete message" });
   }
 };
-
-exports.translateMessage = async (req, res) => {
-  try {
-    // get user id
-
-    // get preferred_lang of that user
-
-    // translate
-  }
-  catch (err) {
-
-  }
-}
