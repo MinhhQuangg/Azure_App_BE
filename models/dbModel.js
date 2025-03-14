@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-require('dotenv').config()
+const { dbConfig } = require('../config')
 
 const db = new Pool({
     host: process.env.DB_HOST,
@@ -20,4 +20,4 @@ db.query('SELECT NOW()', (err, res) => {
     console.log("Connected to PostgreSQL at:", res.rows[0].now);
 });
 
-module.exports = db
+module.exports = db;
