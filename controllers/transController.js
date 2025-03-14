@@ -21,7 +21,7 @@ const translate = async (fromLang, toLang, text) => {
             },
             params: {
                 'api-version': '3.0',
-                'from': fromLang,
+                'from': '',
                 'to': toLang
             },
             data: [{
