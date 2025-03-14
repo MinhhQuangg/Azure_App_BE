@@ -38,6 +38,40 @@ const createRoom = async (req, res) => {
     }
 }
 
+// get chat room details
+const getChatRoomDetails = async (req, res) => {
+    try {
+        const { chatId } = req.params;
+
+        const chatRoom = await prisma.chatRoom.findUnique({
+            where: { id: chatId },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                admin_id: true,
+                members: {
+                    select: {
+                        user: {
+                            select: { id: true, given_name: true, last_name: true, profile_picture: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!chatRoom) {
+            return res.status(404).json({ error: "Chat room not found" });
+        }
+
+        res.json({ chatRoom });
+
+    } catch (err) {
+        console.error("Error fetching chat room details:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
 // update chat room's description
 const updateRoomDescription = async (req, res) => {
     try {
