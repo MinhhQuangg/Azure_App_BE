@@ -21,16 +21,10 @@ io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} joined room ${roomId}`);
   });
 
-  socket.on("sendMessage", (data) => {
-    console.log("Received sendMessage event:", data);
-    io.to(data.roomId).emit("newMessage", data);
-  });
-
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
   });
 });
-
 
 server.listen(port, () => {
   console.log(`Server running on port ${port}...`);
