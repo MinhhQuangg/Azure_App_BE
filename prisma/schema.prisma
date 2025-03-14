@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ChatRoom {
+  id              String      @id
+  name            String      @db.VarChar(255)
+  description     String?
+  admin_id        String      @db.Uuid
+  created_at      DateTime?   @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?   @db.Timestamp(6)
+
+  admin           User        @relation(fields: [admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, name: "ChatRoomAdmin")
+  members         ChatRoomMember[]
+  messages        Message[]
+}
+
+model ChatRoomMember {
+  user_id    String   @db.Uuid
+  chat_id    String   
+  status     String   @default("pending") // Pending, Approved, Removed
+
+  chatRoom   ChatRoom @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, chat_id])
+}
+
+model Message {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  content     String
+  created_by  String   @db.Uuid
+  chat_id String   
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+
+  chatRoom    ChatRoom @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender      User     @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model User {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String          @unique @db.VarChar(255)
+  given_name      String          @db.VarChar(100)
+  last_name       String          @db.VarChar(100)
+  profile_picture String?
+  created_at      DateTime?       @default(now()) @db.Timestamp(6)
+  preferred_lang  String?         @db.VarChar(50)
+
+  chatRooms       ChatRoomMember[]
+  messages        Message[]
+  ownedChatRooms  ChatRoom[]      @relation("ChatRoomAdmin")
+}

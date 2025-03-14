@@ -39,4 +39,11 @@ app.get('/', (req, res) => {
 
 app.use('/auth', userRouter);
 
+const translate = require('./controllers/transController')
+
+app.get('/testTrans', (req, res) => {
+    translate('en', 'vi', 'How are you?')
+    res.send("ok")
+})
+
 module.exports = app;
