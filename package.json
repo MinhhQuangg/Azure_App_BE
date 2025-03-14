@@ -6,10 +6,20 @@
   },
   "dependencies": {
     "axios": "^1.8.1",
+    "@prisma/client": "^6.4.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "nodemon": "^3.1.9",
     "pg": "^8.13.3",
     "uuid": "^11.1.0"
-  }
+  },
+  "version": "1.0.0",
+  "main": "app.js",
+  "devDependencies": {
+    "prisma": "^6.5.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
