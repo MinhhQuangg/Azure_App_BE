@@ -1,6 +1,6 @@
 const axios = require('axios').default;
 const { v4: uuidv4 } = require('uuid');
-const { transConfig } = require('../config');
+const transConfig = require('../config/trans.config');
 
 let key = transConfig.key;
 let endpoint = "https://api.cognitive.microsofttranslator.com";
