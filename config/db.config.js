@@ -1,23 +1,37 @@
 const { Pool } = require('pg');
-require('dotenv').config()
+require('dotenv').config({ path: './config.env' });
 
+// const db = new Pool({
+//   host: process.env.DB_HOST,
+//   user: process.env.DB_USER,
+//   password: process.env.DB_PASSWORD,
+//   database: process.env.DB_NAME,
+//   port: 5432,
+//   ssl: {
+//     rejectUnauthorized: false,
+//   },
+// });
 const db = new Pool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: 5432, 
-    ssl: {
-        rejectUnauthorized: false
-    }
+  host: 'localhost',
+  user: 'postgres',
+  port: 5432,
+  password: '!Luck6869',
+  database: 'demopost',
 });
 
 db.query('SELECT NOW()', (err, res) => {
-    if (err) {
-        console.error("Database connection failed:", err);
-        process.exit(1);
-    }
-    console.log("Connected to PostgreSQL at:", res.rows[0].now);
+  if (err) {
+    console.error('Database connection failed:', err);
+    process.exit(1);
+  }
+  console.log('Connected to PostgreSQL at:', res.rows[0].now);
+});
+db.query('Select * from "Users"', (err, res) => {
+  if (err) {
+    console.error('Database connection failed:', err);
+    process.exit(1);
+  }
+  console.log('Connected to PostgreSQL at:', res.rows);
 });
 
-module.exports = db
+module.exports = db;
