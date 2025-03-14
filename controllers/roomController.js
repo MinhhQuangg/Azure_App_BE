@@ -38,24 +38,6 @@ const createRoom = async (req, res) => {
     }
 }
 
-
-// delete chat room by id
-const deleteRoom = async (req, res) => {
-    try {
-        const { chatId } = req.params;
-
-        await prisma.chatRoom.delete({
-            where: { id: chatId }
-        });
-
-        res.json({ message: "Chat room deleted successfully." })
-    }
-    catch (err) {
-        console.error("Error deleting chat room: ", err.message);
-        return res.status(500).json({ error: "Internal server error."});
-    }
-}
-
 // update chat room's description
 const updateRoomDescription = async (req, res) => {
     try {
@@ -104,10 +86,19 @@ const requestJoin = async (req, res) => {
 // admin approve member
 const approveMember = async (req, res) => {
     try {
-        const { chatId , userId} = req.params;
+        const { chatId , userId } = req.params;
+        
+        if (!isAdmin(chatId, userId)) {
+            return res.status(400).json({ message: "Only admin can approve member." })
+        }
 
         await prisma.chatRoomMember.update({
-            where: { chat_id: chatId, user_id: userId },
+            where: { 
+                chat_id_user_id: {
+                    chat_id: chatId, 
+                    user_id: userId
+                }
+            },
             data: { status: MemberStatus.APPROVED }
         })
     }
@@ -120,33 +111,170 @@ const approveMember = async (req, res) => {
 // remove member
 const removeMember = async (req, res) => {
     try {
-        const {}
+        const { chatId, userId } = req.params;
+
+        if (!isAdmin(chatId, userId)) {
+            return res.status(400).json({ message: "Only admin can remove member." })
+        }
+
+        await prisma.chatRoomMember.delete({
+            where: {
+                chat_id_user_id: {
+                    chat_id: chatId, 
+                    user_id: userId 
+                }
+            }
+        });
+
+        return res.json({ message: userId + " has been removed from chat room"})
     }
-    catch
+    catch (err) {
+        console.error("Error removing member:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
 }
 
 // leave room (if admin vs if members)
+const leaveRoom = async (req, res) => {
+    try {
+        const { chatId, userId } = req.params;
 
-// load message (index)
+        if (isAdmin(chatId, userId)) {
+            const newAdmin = await prisma.chatRoomMember.findFirst({
+                where: { chat_id: chatId },
+                select: { user_id: true },
+                orderBy: { user_id: "asc" } // Find first available member
+            });
 
-// load chat rooms by most last message sent time
+            if (newAdmin) {
+                // Assign new admin
+                await prisma.chatRoom.update({
+                    where: { id: chatId },
+                    data: { admin_id: newAdmin.user_id }
+                });
+            } 
+            else {
+                // No members left -> delete the chat room
+                await prisma.chatRoom.delete({ where: { id: chatId } });
+            }
+        }
+        
+        // leave room
+        await prisma.chatRoomMember.delete({
+            where: { 
+                chat_id_user_id: { 
+                    chat_id: chatId, 
+                    user_id: userId 
+                } 
+            }
+        });
 
+        return res.json({ message: userId + " has left the chat room"});
+    }
+    catch (err) {
+        console.error("Error leaving room:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+// load message for chat room
+const loadMessages = async (req, res) => {
+    try {
+        const { chatroomId } = req.params;
+        const cursor = req.query.cursor || null; // The last loaded message ID (for pagination)
+        const limit = 20; // Max 20 messages per request
+
+        const messages = await prisma.message.findMany({
+            where: { chatroom_id: chatroomId },
+            orderBy: { created_at: "desc" }, 
+            take: limit,
+            skip: cursor ? 1 : 0, 
+            cursor: cursor ? { id: cursor } : undefined,
+            include: {
+                sender: { select: { given_name: true, last_name: true, profile_picture: true } }
+            }
+        });
+
+        // Get last message ID to use as cursor for next request
+        const nextCursor = messages.length === limit ? messages[messages.length - 1].id : null;
+
+        res.json({
+            messages,
+            cursor: nextCursor,
+            hasMore: !!nextCursor
+        });
+
+    } catch (err) {
+        console.error("Error loading messages:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// load latest chat room for user
+const loadChatRooms = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const cursor = req.query.cursor || null; // the last loaded chat room ID
+        const limit = 10; // load max 10 chat rooms per request
+
+        const chatRooms = await prisma.chatRoom.findMany({
+            where: {
+                members: { 
+                    some: { 
+                        user_id: userId 
+                    } 
+                } 
+            },
+            orderBy: { updated_at: "desc" },
+            take: limit,
+            skip: cursor ? 1 : 0,
+            cursor: cursor ? { id: cursor } : undefined, // start fetching after the last cursor
+            include: {
+                members: { select: { user: { select: { given_name: true, last_name: true } } } },
+                messages: {
+                    take: 1, 
+                    orderBy: { created_at: "desc" },
+                    select: { content: true, created_at: true }
+                }
+            }
+        });
+
+        // get last chat room ID to use as cursor for next request
+        const nextCursor = chatRooms.length === limit ? chatRooms[chatRooms.length - 1].id : null;
+
+        res.json({
+            chatRooms,
+            cursor: nextCursor, // use this cursor for the next request
+            hasMore: !!nextCursor
+        });
+
+    } catch (err) {
+        console.error("Error loading chat rooms:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
 
 // check if admin of chat room
+const checkAdmin = (req, res) => {
+    try {
+        const { chatId , userId } = req.params;
+
+        return res.json({ isAdmin: isAdmin(chatId, userId) })
+    }
+    catch (err) {
+        console.error("Error checking admin status:", err.message);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+}
+
 const isAdmin = async (chatId, userId) => {
     try {
-
         const isAdmin = await prisma.chatRoom.findFirst({
             where: {id: chatId, admin_id: userId},
             select: {id: true}
         })
 
-        if (isAdmin) {
-            return res.json({isAdmin: true});
-        }
-        else {
-            return res.json({isAdmin: false});
-        }
+        return isAdmin;
     }
     catch (err) {
         console.error("Error checking admin status:", err.message);
