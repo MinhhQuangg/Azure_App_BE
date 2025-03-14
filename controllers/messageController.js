@@ -1,6 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+/*
 exports.getMessagesForRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
@@ -13,15 +14,21 @@ exports.getMessagesForRoom = async (req, res) => {
     console.error("Error getting messages:", error);
     res.status(500).json({ error: "Failed to retrieve messages" });
   }
-};
+};*/
 
+
+// controllers/messageController.js
 
 exports.createMessage = async (req, res) => {
   try {
-    const { roomId } = req.params;
-    const { text } = req.body;
+    const { roomId } = req.params;    
+    const { text, userId } = req.body;
 
-    const userId = req.body.userId || "some-user-id";
+    if (!roomId || !text || !userId) {
+      return res
+        .status(400)
+        .json({ error: "Missing required fields (roomId, text, userId)." });
+    }
 
     const newMessage = await prisma.messages.create({
       data: {
@@ -31,10 +38,6 @@ exports.createMessage = async (req, res) => {
       },
     });
 
-    const io = req.app.get("socketio");
-
-    io.to(roomId).emit("newMessage", newMessage);
-
     res.status(201).json(newMessage);
   } catch (error) {
     console.error("Error creating message:", error);
@@ -42,24 +45,61 @@ exports.createMessage = async (req, res) => {
   }
 };
 
+
+// Hypothetical translate utility (stub/demo):
+async function translateText(originalText, targetLang) {
+  // In real life, integrate with a translation API or your own logic.
+  // This is just a placeholder returning a "mock" translated string.
+  return `[${targetLang}] ${originalText}`;
+}
+
 exports.getSingleMessage = async (req, res) => {
   try {
-    const { roomId, messageId } = req.params;
-    const message = await prisma.messages.findFirst({
-      where: {
-        id: messageId,
-        chatroom_id: roomId,
-      },
-    });
-    if (!message) {
-      return res.status(404).json({ error: "Message not found" });
+    const { roomId } = req.params;
+    const { userId } = req.query; 
+
+    if (!userId) {
+      return res.status(400).json({
+        error:
+          "Missing userId in query parameters (required to determine preferred language).",
+      });
     }
-    res.json(message);
+
+    const message = await prisma.messages.findFirst({
+      where: { chatroom_id: roomId },
+      orderBy: { created_at: "desc" },
+    });
+
+    if (!message) {
+      return res.status(404).json({ error: "No messages found for this room." });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: { preferred_lang: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const translatedContent = await translateText(message.content, user.preferred_lang);
+
+    const responseMessage = {
+      ...message,
+      content: translatedContent,
+    };
+
+    const io = req.app.get("socketio");
+    io.to(userId).emit("translatedMessage", responseMessage);
+
+    res.json(responseMessage);
   } catch (error) {
-    console.error("Error retrieving single message:", error);
-    res.status(500).json({ error: "Failed to retrieve message" });
+    console.error("Error retrieving latest message:", error);
+    res.status(500).json({ error: "Failed to retrieve the latest message" });
   }
 };
+
 
 
 exports.deleteMessage = async (req, res) => {
