@@ -7,7 +7,7 @@ let endpoint = "https://api.cognitive.microsofttranslator.com";
 
 let location = transConfig.location;
 
-const translate = async (fromLang, toLang, text) => {
+const translate = async (toLang, text) => {
     try {
         const response = await axios({
             baseURL: endpoint,
@@ -41,7 +41,7 @@ const translate = async (fromLang, toLang, text) => {
         } else {
             console.error("Request Error:");
         }
-        throw err; // Re-throw for further debugging or handling
+        throw err;
     }
 };
 
