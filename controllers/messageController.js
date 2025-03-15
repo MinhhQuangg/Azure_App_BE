@@ -1,24 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-/*
-exports.getMessagesForRoom = async (req, res) => {
-  try {
-    const { roomId } = req.params;
-    const messages = await prisma.messages.findMany({
-      where: { chatroom_id: roomId },
-      orderBy: { created_at: "asc" },
-    });
-    res.json(messages);
-  } catch (error) {
-    console.error("Error getting messages:", error);
-    res.status(500).json({ error: "Failed to retrieve messages" });
-  }
-};*/
-
-
-// controllers/messageController.js
-
 exports.createMessage = async (req, res) => {
   try {
     const { roomId } = req.params;    
@@ -46,7 +28,6 @@ exports.createMessage = async (req, res) => {
 };
 
 
-// Hypothetical translate utility (stub/demo):
 async function translateText(originalText, targetLang) {
   // In real life, integrate with a translation API or your own logic.
   // This is just a placeholder returning a "mock" translated string.
