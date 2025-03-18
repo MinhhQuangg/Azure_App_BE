@@ -1,8 +1,12 @@
 const express = require('express');
-const passport = require('../controllers/authController');
+const passport = require('../controllers/passController');
 
 const { googleLogin } = require('../controllers/googleControler');
+const authController = require('./../controllers/authController');
 const router = express.Router();
+
+router.post('/signup', authController.signup);
+router.post('/login', authController.login);
 
 router.get(
   '/google',
@@ -25,5 +29,5 @@ router.get('/google/fail', (req, res) => {
 });
 
 router.post('/google', googleLogin);
-
+router.get('/me', authController.protect, authController.getMe);
 module.exports = router;

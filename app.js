@@ -1,6 +1,6 @@
 const express = require('express');
 const session = require('express-session');
-const passport = require('./controllers/authController');
+const passport = require('./controllers/passController');
 const userRouter = require('./routes/userRoutes');
 const cors = require('cors');
 require('dotenv').config({ path: './config.env' });
@@ -39,11 +39,11 @@ app.get('/', (req, res) => {
 
 app.use('/auth', userRouter);
 
-const translate = require('./controllers/transController')
+const translate = require('./controllers/transController');
 
 app.get('/testTrans', (req, res) => {
-    translate('', 'vi', 'How are you?')
-    res.send("ok")
-})
+  translate('', 'vi', 'How are you?');
+  res.send('ok');
+});
 
 module.exports = app;
