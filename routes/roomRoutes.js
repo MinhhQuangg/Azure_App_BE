@@ -1,7 +1,6 @@
 const express = require("express");
 const {
     createRoom,
-    getAllChatRooms,
     getChatRoomDetails,
     updateRoomDescription,
     requestJoin,
@@ -10,22 +9,20 @@ const {
     leaveRoom,
     loadMessages,
     loadChatRooms,
-    checkAdmin
+    isAdmin
 } = require("../controllers/roomController");
 
 const router = express.Router();
 
 router.get("/", (req, res) => {
     res.json({ message: "test chat room ok" });
-});
+})
 
-// f2d42739-ff11-4e65-ba88-e1f4599da40c
 
-router.get("/all", getAllChatRooms);
 router.get("/:chatId/details", getChatRoomDetails);
 router.get("/:chatId/messages", loadMessages);
 router.get("/user/:userId", loadChatRooms);
-router.get("/:chatId/admin/:userId", checkAdmin);
+router.get("/:chatId/admin/:userId", isAdmin);
 
 router.post("/", createRoom);
 router.post("/:chatId/request", requestJoin);

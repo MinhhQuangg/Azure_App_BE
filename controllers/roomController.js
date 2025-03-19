@@ -2,6 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { v4: uuidv4 } = require('uuid');
 const MemberStatus = require('../utils/room');
+const { checkAdmin } = require('../utils/helper');
 
 // create chat room by admin_id
 const createRoom = async (req, res) => {
@@ -44,27 +45,6 @@ const createRoom = async (req, res) => {
         return res.status(500).json({ error: "Internal server error."});
     }
 }
-
-const getAllChatRooms = async (req, res) => {
-    try {
-        const chatRooms = await prisma.chatRoom.findMany({
-            orderBy: { updated_at: "desc" }, 
-            include: {
-                members: { select: { user: { select: { given_name: true, last_name: true } } } },
-                messages: {
-                    take: 1,
-                    orderBy: { created_at: "desc" },
-                    select: { content: true, created_at: true }
-                }
-            }
-        });
-
-        res.json({ chatRooms });
-    } catch (err) {
-        console.error("Error fetching chat rooms:", err.message);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
 
 // get chat room details
 const getChatRoomDetails = async (req, res) => {
@@ -150,7 +130,7 @@ const approveMember = async (req, res) => {
     try {
         const { chatId , userId } = req.params;
         
-        if (!isAdmin(chatId, userId)) {
+        if (!checkAdmin(chatId, userId)) {
             return res.status(400).json({ message: "Only admin can approve member." })
         }
 
@@ -175,7 +155,7 @@ const removeMember = async (req, res) => {
     try {
         const { chatId, userId } = req.params;
 
-        if (!isAdmin(chatId, userId)) {
+        if (!checkAdmin(chatId, userId)) {
             return res.status(400).json({ message: "Only admin can remove member." })
         }
 
@@ -201,7 +181,7 @@ const leaveRoom = async (req, res) => {
     try {
         const { chatId, userId } = req.params;
 
-        if (isAdmin(chatId, userId)) {
+        if (checkAdmin(chatId, userId)) {
             const newAdmin = await prisma.chatRoomMember.findFirst({
                 where: { chat_id: chatId },
                 select: { user_id: true },
@@ -242,7 +222,7 @@ const leaveRoom = async (req, res) => {
 // load message for chat room
 const loadMessages = async (req, res) => {
     try {
-        const { chatroomId } = req.params;
+        const { chatroomId, userId } = req.params;
         const cursor = req.query.cursor || null; // the last loaded message ID (for pagination)
         const limit = 20; // max 20 messages per request
 
@@ -323,10 +303,10 @@ const loadChatRooms = async (req, res) => {
 
 
 // check if admin of chat room
-const checkAdmin = async (req, res) => {
+const isAdmin = async (req, res) => {
     try {
         const { chatId , userId } = req.params;
-        const isAd = await isAdmin(chatId, userId);
+        const isAd = await checkAdmin(chatId, userId);
 
         return res.json({ isAdmin: isAd })
     }
@@ -336,29 +316,13 @@ const checkAdmin = async (req, res) => {
     }
 }
 
-const isAdmin = async (chatId, userId) => {
-    try {
-        const isAdmin = await prisma.chatRoom.findFirst({
-            where: {id: chatId, admin_id: userId},
-            select: {id: true}
-        })
-
-        return !!isAdmin;
-    }
-    catch (err) {
-        console.error("Error checking admin status:", err.message);
-        return res.status(500).json({ error: "Internal server error" });
-    }
-}
-
 module.exports = { 
     createRoom,
-    getAllChatRooms,
     requestJoin,
     getChatRoomDetails,
     loadMessages,
     loadChatRooms,
-    checkAdmin,
+    isAdmin,
     updateRoomDescription,
     approveMember,
     removeMember,
