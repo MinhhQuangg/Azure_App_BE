@@ -1,8 +1,8 @@
 const express = require('express');
 const session = require('express-session');
-// const passport = require('./controllers/authController');
-// const userRouter = require('./routes/userRoutes');
-// const cors = require('cors');
+const passport = require('./controllers/authController');
+const userRouter = require('./routes/userRoutes');
+const cors = require('cors');
 require('dotenv').config({ path: './config.env' });
 
 const app = express();
@@ -41,8 +41,11 @@ app.use(express.json());
 
 // app.use('/auth', userRouter);
 
-app.use('/chatrooms', roomRoute);
+const translate = require('./controllers/transController')
 
-app.use(messageRoutes);
+app.get('/testTrans', (req, res) => {
+    translate('', 'vi', 'How are you?')
+    res.send("ok")
+})
 
 module.exports = app;
