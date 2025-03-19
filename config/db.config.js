@@ -20,4 +20,14 @@ db.query('SELECT NOW()', (err, res) => {
     console.log("Connected to PostgreSQL at:", res.rows[0].now);
 });
 
+db.query('Select * from "Users"', (err, res) => {
+    if (err) {
+      console.error('Database connection failed:', err);
+      process.exit(1);
+    }
+    console.log('Connected to PostgreSQL at:', res.rows);
+  });
+  
+  module.exports = db;
+
 module.exports = db;

@@ -2,7 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { v4: uuidv4 } = require('uuid');
 const MemberStatus = require('../utils/room');
-const { getUserPreferredLang, checkAdmin } = require('../utils/helper');
+const { checkAdmin } = require('../utils/helper');
 
 // create chat room by admin_id
 const createRoom = async (req, res) => {
