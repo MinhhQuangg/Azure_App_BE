@@ -25,7 +25,13 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     console.log(`Socket ${socket.id} joined room ${roomId}`);
   });
-
+  socket.on ("send-message", (message, roomID) => {
+    if (roomID === ""){
+      socket.broadcast.emit("receive-message", message);
+    } else {
+      socket.to(roomID).emit("receive-message", message);
+    }
+  });
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
   });
