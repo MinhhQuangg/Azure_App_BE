@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const passport = require('./controllers/passController');
 const userRouter = require('./routes/userRoutes');
+const roomRoute = require('./routes/roomRoutes');
 const cors = require('cors');
 require('dotenv').config({ path: './config.env' });
 
@@ -38,6 +39,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/auth', userRouter);
+
+app.use('/chatroom', roomRoute);
 
 const translate = require('./controllers/transController');
 

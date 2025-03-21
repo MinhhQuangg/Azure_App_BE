@@ -9,7 +9,8 @@ const {
     leaveRoom,
     loadMessages,
     loadChatRooms,
-    isAdmin
+    isAdmin,
+    getReadStatus
 } = require("../controllers/roomController");
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.get("/:chatId/details", getChatRoomDetails);
 router.get("/:chatId/messages", loadMessages);
 router.get("/user/:userId", loadChatRooms);
 router.get("/:chatId/admin/:userId", isAdmin);
+router.get("/:chatId/getReadStatus/:userId", getReadStatus);
 
 router.post("/", createRoom);
 router.post("/:chatId/request", requestJoin);

@@ -7,7 +7,7 @@ const { checkAdmin } = require('../utils/helper');
 // create chat room by admin_id
 const createRoom = async (req, res) => {
     try {
-        const { name, description, adminId } = req.body;
+        const { name, description, adminId, avatarColor, avatarText, lastMessage } = req.body;
 
         if (!adminId) {
             return res.status(400).json({ error: "admin_id is required."})
@@ -15,6 +15,10 @@ const createRoom = async (req, res) => {
 
         if (!name) {
             return res.status(400).json({ error: "Chat room name is required."})
+        }
+
+        if (!avatarColor || !avatarText) {
+            return res.status(400).json({ error: "Chat room avatar color and text is required."})
         }
 
         const id = uuidv4();
@@ -26,17 +30,28 @@ const createRoom = async (req, res) => {
                 description,
                 admin_id: adminId,
                 created_at: new Date(),
-                updated_at: new Date()
+                updated_at: new Date(),
+                avatar_color: avatarColor,
+                avatar_text: avatarText,
+                last_message: lastMessage
             }
         });
 
         await prisma.chatRoomMember.create({
             data: {
                 user_id: adminId,
-                chatId: id,
+                chat_id: id,
                 status: MemberStatus.APPROVED
             }
         });
+
+        await prisma.chatRoomRead.create({
+            data: {
+                user_id: adminId,
+                chat_id: id,
+                unread: true
+            }
+        })
         
         return res.status(201).json({ message: "Chat room created successfully.", chatroom });
     }
@@ -61,7 +76,7 @@ const getChatRoomDetails = async (req, res) => {
                 members: {
                     select: {
                         user: {
-                            select: { id: true, given_name: true, last_name: true, profile_picture: true }
+                            select: { id: true, given_name: true, profile_picture: true }
                         }
                     }
                 }
@@ -219,10 +234,29 @@ const leaveRoom = async (req, res) => {
     }
 }
 
+const getReadStatus = async (req, res) => {
+    try {
+        const { userId, chatId } = req.params;
+
+        const unread = await prisma.chatRoomRead.findFirst({
+            where: {
+                chat_id: chatId, 
+                user_id: userId 
+            }
+        });
+
+        return res.json({ message: "Chat room read status updated successfully", unread})
+    }
+    catch (err) {
+        console.error("Error loading messages:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
 // load message for chat room
 const loadMessages = async (req, res) => {
     try {
-        const { chatroomId, userId } = req.params;
+        const { chatroomId } = req.params;
         const cursor = req.query.cursor || null; // the last loaded message ID (for pagination)
         const limit = 20; // max 20 messages per request
 
@@ -232,7 +266,7 @@ const loadMessages = async (req, res) => {
             take: limit,
             cursor: cursor ? { id: cursor } : undefined,
             include: {
-                sender: { select: { given_name: true, last_name: true, profile_picture: true } }
+                sender: { select: { given_name: true, profile_picture: true } }
             }
         });
 
@@ -258,8 +292,6 @@ const loadChatRooms = async (req, res) => {
         const cursor = req.query.cursor || null;
         const limit = 10;
 
-        console.log("User ID:", userId);
-
         // fetch chat rooms where user is an "approved" member
         const chatRooms = await prisma.chatRoomMember.findMany({
             where: { 
@@ -268,7 +300,7 @@ const loadChatRooms = async (req, res) => {
             },
             take: limit,
             cursor: cursor ? { chat_id: cursor, user_id: userId } : undefined, // Cursor for pagination
-            orderBy: { chatRoom: { updated_at: "asc" } }, // Sort by latest chat room update
+            orderBy: { chatRoom: { updated_at: "desc" } }, // Sort by latest chat room update
             include: {
                 chatRoom: {
                     include: {
@@ -278,7 +310,7 @@ const loadChatRooms = async (req, res) => {
                             select: {
                                 content: true, 
                                 created_at: true,
-                                sender: { select: { given_name: true, last_name: true, profile_picture: true } }
+                                sender: { select: { given_name: true, profile_picture: true } }
                             }
                         }
                     }
@@ -326,5 +358,6 @@ module.exports = {
     updateRoomDescription,
     approveMember,
     removeMember,
-    leaveRoom
+    leaveRoom,
+    getReadStatus
 }
