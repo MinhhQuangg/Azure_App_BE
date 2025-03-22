@@ -2,7 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const { v4: uuidv4 } = require('uuid');
 const MemberStatus = require('../utils/room');
-const { checkAdmin } = require('../utils/helper');
+const { checkAdmin, getUser } = require('../utils/helper');
 
 // create chat room by admin_id
 const createRoom = async (req, res) => {
@@ -151,13 +151,15 @@ const approveMember = async (req, res) => {
 
         await prisma.chatRoomMember.update({
             where: { 
-                chat_id_user_id: {
+                user_id_chat_id: {
                     chat_id: chatId, 
                     user_id: userId
                 }
             },
             data: { status: MemberStatus.APPROVED }
         })
+
+        return res.json({ message: "Member approved " + userId })
     }
     catch (err) {
         console.error("Error requesting to join:", err.message);
@@ -236,16 +238,37 @@ const leaveRoom = async (req, res) => {
 
 const getReadStatus = async (req, res) => {
     try {
-        const { userId, chatId } = req.params;
+        const { chatId, userId } = req.params;
 
-        const unread = await prisma.chatRoomRead.findFirst({
+        const response = await prisma.chatRoomRead.findFirst({
             where: {
                 chat_id: chatId, 
                 user_id: userId 
             }
         });
+        return res.json({ message: "Chat room read status updated successfully", unread: response?.unread})
+    }
+    catch (err) {
+        console.error("Error loading messages:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
 
-        return res.json({ message: "Chat room read status updated successfully", unread})
+const updateReadStatus = async (req, res) => {
+    try {
+        console.log(req.params)
+        const { chatId, userId } = req.params;
+
+        await prisma.chatRoomRead.updateMany({
+            where: { 
+                user_id_chat_id: {
+                    chat_id: chatId, 
+                    user_id: userId 
+                }
+            },
+            data: { unread: false }
+        });
+        return res.json({message: "Chat room read status updated."})
     }
     catch (err) {
         console.error("Error loading messages:", err.message);
@@ -333,6 +356,49 @@ const loadChatRooms = async (req, res) => {
     }
 };
 
+const getMembers = async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const memsChat = await prisma.chatRoomMember.findMany({
+            where: { 
+                chat_id: chatId,
+                status: MemberStatus.APPROVED
+             }
+        });
+
+        const members = await Promise.all(
+            memsChat.map((mem) => getUser(mem.user_id))
+        );          
+        
+        return res.json({message: "Get chat room members successfully.", members})
+    }
+    catch (err) {
+        console.error("Error loading chat rooms:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+const getPendingMembers = async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const memsChat = await prisma.chatRoomMember.findMany({
+            where: { 
+                chat_id: chatId,
+                status: MemberStatus.PENDING
+             }
+        });
+
+        const members = await Promise.all(
+            memsChat.map((mem) => getUser(mem.user_id))
+        );          
+        
+        return res.json({message: "Get chat room pending members successfully.", members})
+    }
+    catch (err) {
+        console.error("Error loading chat rooms:", err.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
 
 // check if admin of chat room
 const isAdmin = async (req, res) => {
@@ -359,5 +425,8 @@ module.exports = {
     approveMember,
     removeMember,
     leaveRoom,
-    getReadStatus
+    getReadStatus,
+    updateReadStatus,
+    getMembers,
+    getPendingMembers
 }

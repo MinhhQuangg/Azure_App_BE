@@ -10,7 +10,10 @@ const {
     loadMessages,
     loadChatRooms,
     isAdmin,
-    getReadStatus
+    getReadStatus,
+    updateReadStatus,
+    getMembers,
+    getPendingMembers
 } = require("../controllers/roomController");
 
 const router = express.Router();
@@ -24,13 +27,17 @@ router.get("/:chatId/details", getChatRoomDetails);
 router.get("/:chatId/messages", loadMessages);
 router.get("/user/:userId", loadChatRooms);
 router.get("/:chatId/admin/:userId", isAdmin);
-router.get("/:chatId/getReadStatus/:userId", getReadStatus);
+router.get("/:chatId/readStatus/:userId", getReadStatus);
+router.get("/:chatId/members", getMembers);
+router.get("/:chatId/pending", getPendingMembers);
 
 router.post("/", createRoom);
 router.post("/:chatId/request", requestJoin);
 
 router.put("/:chatId/description", updateRoomDescription);
+router.put("/:chatId/readStatus/:userId", updateReadStatus);
 router.put("/:chatId/approve/:userId", approveMember);
+
 
 router.delete("/:chatId/members/:userId", removeMember);
 router.delete("/:chatId/leave/:userId", leaveRoom);

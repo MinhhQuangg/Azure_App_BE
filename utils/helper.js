@@ -12,10 +12,25 @@ const checkAdmin = async (chatId, userId) => {
     }
     catch (err) {
         console.error("Error checking admin status:", err.message);
-        return res.status(500).json({ error: "Internal server error" });
+        throw err
+    }
+}
+
+const getUser = async (userId) => {
+    try {
+        const user = await prisma.user.findFirst({
+            where: {id: userId}
+        });
+
+        return user
+    }
+    catch (err) {
+        console.error("Error checking admin status:", err.message);
+        throw err
     }
 }
 
 module.exports = {
-    checkAdmin
+    checkAdmin,
+    getUser
 }
