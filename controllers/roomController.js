@@ -64,52 +64,55 @@ const createRoom = async (req, res) => {
 // get chat room details
 const getChatRoomDetails = async (req, res) => {
     try {
-      const { chatId } = req.params;
-  
-      const chatRoom = await prisma.chatRoom.findUnique({
-        where: { id: chatId },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          admin_id: true,
-          avatar_color: true,
-          avatar_text: true,
-          last_message: true,
-          created_at: true,
-          updated_at: true,
-          members: {
+        const { chatId } = req.params;
+    
+        const chatRoom = await prisma.chatRoom.findUnique({
+            where: { id: chatId },
             select: {
-              status: true,
-              user: {
-                select: {
-                  id: true,
-                  given_name: true,
-                  profile_picture: true
+                id: true,
+                name: true,
+                description: true,
+                admin_id: true,
+                avatar_color: true,
+                avatar_text: true,
+                last_message: true,
+                created_at: true,
+                updated_at: true,
+                members: {
+                    select: {
+                        timestamp: true,
+                        status: true,
+                        user: {
+                            select: {
+                            id: true,
+                            given_name: true,
+                            profile_picture: true,
+                            email: true
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
-        }
-      });
+        });
   
-      if (!chatRoom) {
-        return res.status(404).json({ error: "Chat room not found" });
-      }
-  
-      const formattedMembers = chatRoom.members.map(member => ({
-        id: member.user.id,
-        given_name: member.user.given_name,
-        profile_picture: member.user.profile_picture,
-        status: member.status
-      }));
-  
-      return res.json({
-        chatRoom: {
-          ...chatRoom,
-          members: formattedMembers
-        }
-      });
+	if (!chatRoom) {
+		return res.status(404).json({ error: "Chat room not found" });
+	}
+
+	const formattedMembers = chatRoom.members.map(member => ({
+		id: member.user.id,
+		given_name: member.user.given_name,
+		profile_picture: member.user.profile_picture,
+		status: member.status,
+        timestamp: member.timestamp
+	}));
+
+	return res.json({
+		chatRoom: {
+			...chatRoom,
+			members: formattedMembers
+		}
+	});
   
     } catch (err) {
       console.error("Error fetching chat room details:", err.message);
@@ -122,8 +125,6 @@ const updateRoomData = async (req, res) => {
     try {
         const { chatId } = req.params;
         const data = req.body;
-
-        console.log(data)
 
         const chatroom = await prisma.chatRoom.update({
             where: { id: chatId },
@@ -192,7 +193,10 @@ const handleMemberRequest = async (req, res) => {
                         user_id: userId
                     }
                 },
-                data: { status: status }
+                data: { 
+                    status: status,
+                    timestamp: new Date()
+                }
             })
 
             await prisma.chatRoomRead.create({
@@ -223,7 +227,7 @@ const removeMember = async (req, res) => {
 
         await prisma.chatRoomMember.delete({
             where: {
-                chat_id_user_id: {
+                user_id_chat_id: {
                     chat_id: chatId, 
                     user_id: userId 
                 }
@@ -427,7 +431,7 @@ const getPendingMembers = async (req, res) => {
             where: { 
                 chat_id: chatId,
                 status: MemberStatus.PENDING
-             }
+            }
         });
 
         const members = await Promise.all(
@@ -456,6 +460,27 @@ const isAdmin = async (req, res) => {
     }
 }
 
+const changeAdmin = async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const { newAdminId } = req.body;
+
+        await prisma.chatRoom.updateMany({
+            where: {
+                id: chatId
+            },
+            data: {
+                admin_id: newAdminId
+            }
+        })
+        return res.json({message: "Change admin successfully."})
+    }
+    catch (err) {
+        console.error("Failed to change new admin:", err.message);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+}
+
 module.exports = { 
     createRoom,
     requestJoin,
@@ -470,5 +495,6 @@ module.exports = {
     getReadStatus,
     updateReadStatus,
     getMembers,
-    getPendingMembers
+    getPendingMembers,
+    changeAdmin
 }

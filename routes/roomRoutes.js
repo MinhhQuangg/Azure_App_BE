@@ -13,7 +13,8 @@ const {
     getReadStatus,
     updateReadStatus,
     getMembers,
-    getPendingMembers
+    getPendingMembers,
+    changeAdmin
 } = require("../controllers/roomController");
 
 const router = express.Router();
@@ -37,7 +38,7 @@ router.post("/:chatId/request", requestJoin);
 router.put("/:chatId", updateRoomData);
 router.put("/:chatId/readStatus/:userId", updateReadStatus);
 router.put("/:chatId/memberRequest", handleMemberRequest);
-
+router.put("/:chatId/changeAdmin/", changeAdmin)
 
 router.delete("/:chatId/members/:userId", removeMember);
 router.delete("/:chatId/leave/:userId", leaveRoom);
