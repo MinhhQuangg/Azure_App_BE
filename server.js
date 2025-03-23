@@ -14,12 +14,18 @@ const db = require('./config/db.config');
 
 app.set("socketio", io);
 
+io.use((socket, next) => {
+  const userId = socket.handshake.auth.userId;
+  socket.userId = userId;
+  next();
+});
+
 io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
+  console.log("Client connected with userId:", socket.userId);
 
   socket.on("joinRoom", (roomId) => {
     socket.join(roomId);
-    console.log(`Socket ${socket.id} joined room ${roomId}`);
+    console.log(`Socket ${socket.userId} joined room ${roomId}`);
   });
   socket.on ("send-message", (message, roomID) => {
     if (roomID === ""){

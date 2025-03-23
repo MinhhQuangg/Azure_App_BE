@@ -8,66 +8,61 @@ datasource db {
 }
 
 model ChatRoom {
-  id              String      @id
-  name            String      @db.VarChar(255)
-  description     String?
-  admin_id        String      @db.Uuid
-  created_at      DateTime?   @default(now()) @db.Timestamp(6)
-  updated_at      DateTime?   @db.Timestamp(6)
-  avatar_color    String
-  avatar_text     String
-  last_message    String
-
-  admin           User        @relation(fields: [admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, name: "ChatRoomAdmin")
-  members         ChatRoomMember[]
-  messages        Message[]
-  reads           ChatRoomRead[]          
+  id           String           @id
+  name         String           @db.VarChar(255)
+  description  String?
+  admin_id     String           @db.Uuid
+  created_at   DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?        @db.Timestamp(6)
+  avatar_color String
+  avatar_text  String
+  last_message String
+  admin        User             @relation("ChatRoomAdmin", fields: [admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  members      ChatRoomMember[]
+  reads        ChatRoomRead[]
+  messages     Message[]
 }
 
 model ChatRoomMember {
-  user_id    String   @db.Uuid
-  chat_id    String   
-  status     String   @default("pending") // Pending, Approved, Removed
-
-  chatRoom   ChatRoom @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_id  String   @db.Uuid
+  chat_id  String
+  status   String   @default("pending")
+  chatRoom ChatRoom @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, chat_id])
 }
 
 model ChatRoomRead {
-  user_id    String   @db.Uuid
-  chat_id    String  
-  unread     Boolean  @default(true)
-
-  chatRoom   ChatRoom @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_id  String   @db.Uuid
+  chat_id  String
+  unread   Boolean  @default(true)
+  chatRoom ChatRoom @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, chat_id])
 }
 
 model Message {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  content     String
-  created_by  String   @db.Uuid
-  chat_id String   
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
-
-  chatRoom    ChatRoom @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  sender      User     @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  content    String
+  created_by String    @db.Uuid
+  chat_id    String
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  chatRoom   ChatRoom  @relation(fields: [chat_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender     User      @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model User {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email           String          @unique @db.VarChar(255)
-  given_name      String          @db.VarChar(100)
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String           @unique @db.VarChar(255)
+  given_name      String           @db.VarChar(100)
   profile_picture String?
-  created_at      DateTime?       @default(now()) @db.Timestamp(6)
-  preferred_lang  String?         @db.VarChar(50)
-  password        String?         @db.VarChar(255)
-
+  created_at      DateTime?        @default(now()) @db.Timestamp(6)
+  preferred_lang  String?          @db.VarChar(50)
+  password        String?          @db.VarChar(255)
+  ownedChatRooms  ChatRoom[]       @relation("ChatRoomAdmin")
   chatRooms       ChatRoomMember[]
-  messages        Message[]
-  ownedChatRooms  ChatRoom[]      @relation("ChatRoomAdmin")
   readRooms       ChatRoomRead[]
+  messages        Message[]
 }

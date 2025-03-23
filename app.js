@@ -1,52 +1,64 @@
-const express = require('express');
-const session = require('express-session');
-const passport = require('./controllers/passController');
-const userRouter = require('./routes/userRoutes');
-const roomRoute = require('./routes/roomRoutes');
-const cors = require('cors');
-require('dotenv').config({ path: './config.env' });
+// app.js
+require("dotenv").config({ path: "./config.env" });
+const express = require("express");
+const session = require("express-session");
+const cors = require("cors");
+const passport = require("./controllers/passController");
 
+const userRouter = require("./routes/userRoutes");
+const roomRoute = require("./routes/roomRoutes");
+// Import your messageRoutes (the file with router.post("/rooms/:roomId/messages"))
+const messageRoutes = require("./routes/messageRoutes");
+
+const translate = require("./controllers/transController");
 const app = express();
 
 const corsOptions = {
-  origin: 'http://localhost:5173',
+  origin: "http://localhost:5173",
   credentials: true,
 };
-
 app.use(cors(corsOptions));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Security headers (optional)
 app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   next();
 });
 
+// Session
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "some-secret",
     resave: false,
     saveUninitialized: false,
   })
 );
 
+// Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.get('/', (req, res) => {
+// Example homepage
+app.get("/", (req, res) => {
   res.send('<a href="/auth/google">Login with Google</a>');
 });
 
-app.use('/auth', userRouter);
+// Example user routes => /auth/...
+app.use("/auth", userRouter);
 
-app.use('/chatroom', roomRoute);
+// Example room routes => /chatroom/...
+app.use("/chatroom", roomRoute);
 
-const translate = require('./controllers/transController');
+// Mount your message routes at root => /rooms/:roomId/messages
+app.use("/", messageRoutes);
 
-app.get('/testTrans', (req, res) => {
-  translate('', 'vi', 'How are you?');
-  res.send('ok');
+// If you need translation for testing
+app.get("/testTrans", (req, res) => {
+  translate("", "vi", "How are you?");
+  res.send("ok");
 });
 
 module.exports = app;
