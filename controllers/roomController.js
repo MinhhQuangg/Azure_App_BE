@@ -249,9 +249,15 @@ const leaveRoom = async (req, res) => {
 
         if (checkAdmin(chatId, userId)) {
             const newAdmin = await prisma.chatRoomMember.findFirst({
-                where: { chat_id: chatId },
+                where: { 
+                    chat_id: chatId,
+                    user_id: {
+                        not: userId
+                    },
+                    status: MemberStatus.APPROVED
+                },
                 select: { user_id: true },
-                orderBy: { user_id: "asc" } // find first available member
+                orderBy: { user_id: "asc" } 
             });
 
             if (newAdmin) {
@@ -269,6 +275,15 @@ const leaveRoom = async (req, res) => {
         
         // leave room
         await prisma.chatRoomMember.delete({
+            where: { 
+                user_id_chat_id: { 
+                    chat_id: chatId, 
+                    user_id: userId 
+                } 
+            }
+        });
+
+        await prisma.chatRoomRead.delete({
             where: { 
                 user_id_chat_id: { 
                     chat_id: chatId, 
