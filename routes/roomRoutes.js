@@ -2,9 +2,9 @@ const express = require("express");
 const {
     createRoom,
     getChatRoomDetails,
-    updateRoomDescription,
+    updateRoomData,
     requestJoin,
-    approveMember,
+    handleMemberRequest,
     removeMember,
     leaveRoom,
     loadMessages,
@@ -23,7 +23,7 @@ router.get("/", (req, res) => {
 })
 
 
-router.get("/:chatId/details", getChatRoomDetails);
+router.get("/:chatId", getChatRoomDetails);
 router.get("/:chatId/messages", loadMessages);
 router.get("/user/:userId", loadChatRooms);
 router.get("/:chatId/admin/:userId", isAdmin);
@@ -34,9 +34,9 @@ router.get("/:chatId/pending", getPendingMembers);
 router.post("/", createRoom);
 router.post("/:chatId/request", requestJoin);
 
-router.put("/:chatId/description", updateRoomDescription);
+router.put("/:chatId", updateRoomData);
 router.put("/:chatId/readStatus/:userId", updateReadStatus);
-router.put("/:chatId/approve/:userId", approveMember);
+router.put("/:chatId/memberRequest", handleMemberRequest);
 
 
 router.delete("/:chatId/members/:userId", removeMember);

@@ -64,47 +64,71 @@ const createRoom = async (req, res) => {
 // get chat room details
 const getChatRoomDetails = async (req, res) => {
     try {
-        const { chatId } = req.params;
-
-        const chatRoom = await prisma.chatRoom.findUnique({
-            where: { id: chatId },
+      const { chatId } = req.params;
+  
+      const chatRoom = await prisma.chatRoom.findUnique({
+        where: { id: chatId },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          admin_id: true,
+          avatar_color: true,
+          avatar_text: true,
+          last_message: true,
+          created_at: true,
+          updated_at: true,
+          members: {
             select: {
-                id: true,
-                name: true,
-                description: true,
-                admin_id: true,
-                members: {
-                    select: {
-                        user: {
-                            select: { id: true, given_name: true, profile_picture: true }
-                        }
-                    }
+              status: true,
+              user: {
+                select: {
+                  id: true,
+                  given_name: true,
+                  profile_picture: true
                 }
+              }
             }
-        });
-
-        if (!chatRoom) {
-            return res.status(404).json({ error: "Chat room not found" });
+          }
         }
-
-        res.json({ chatRoom });
-
+      });
+  
+      if (!chatRoom) {
+        return res.status(404).json({ error: "Chat room not found" });
+      }
+  
+      const formattedMembers = chatRoom.members.map(member => ({
+        id: member.user.id,
+        given_name: member.user.given_name,
+        profile_picture: member.user.profile_picture,
+        status: member.status
+      }));
+  
+      return res.json({
+        chatRoom: {
+          ...chatRoom,
+          members: formattedMembers
+        }
+      });
+  
     } catch (err) {
-        console.error("Error fetching chat room details:", err.message);
-        res.status(500).json({ error: "Internal server error" });
+      console.error("Error fetching chat room details:", err.message);
+      res.status(500).json({ error: "Internal server error" });
     }
-};
+  };  
 
 // update chat room's description
-const updateRoomDescription = async (req, res) => {
+const updateRoomData = async (req, res) => {
     try {
         const { chatId } = req.params;
-        const { description } = req.body;
+        const data = req.body;
+
+        console.log(data)
 
         const chatroom = await prisma.chatRoom.update({
             where: { id: chatId },
             data: { 
-                description: description,
+                ...data,
                 updated_at: new Date()
             }
         });
@@ -132,7 +156,7 @@ const requestJoin = async (req, res) => {
             }
         })
 
-        return res.json({ message: "Join request sent to " + userId })
+        return res.json({ message: "Join request sent from " + userId })
     }
     catch (err) {
         console.error("Error requesting to join:", err.message);
@@ -141,23 +165,44 @@ const requestJoin = async (req, res) => {
 }
 
 // admin approve member
-const approveMember = async (req, res) => {
+const handleMemberRequest = async (req, res) => {
     try {
-        const { chatId , userId } = req.params;
+        const { chatId  } = req.params;
+        const { userId, status } = req.body;
         
         if (!checkAdmin(chatId, userId)) {
             return res.status(400).json({ message: "Only admin can approve member." })
         }
 
-        await prisma.chatRoomMember.update({
-            where: { 
-                user_id_chat_id: {
-                    chat_id: chatId, 
-                    user_id: userId
+        if (status == MemberStatus.REJECTED) {
+            await prisma.chatRoomMember.delete({
+                where: { 
+                    user_id_chat_id: {
+                        chat_id: chatId, 
+                        user_id: userId
+                    }
+                },
+            })
+        }
+        else {
+            await prisma.chatRoomMember.update({
+                where: { 
+                    user_id_chat_id: {
+                        chat_id: chatId, 
+                        user_id: userId
+                    }
+                },
+                data: { status: status }
+            })
+
+            await prisma.chatRoomRead.create({
+                data: {
+                    user_id: userId,
+                    chat_id: chatId,
+                    unread: true
                 }
-            },
-            data: { status: MemberStatus.APPROVED }
-        })
+            })
+        }
 
         return res.json({ message: "Member approved " + userId })
     }
@@ -189,7 +234,7 @@ const removeMember = async (req, res) => {
     }
     catch (err) {
         console.error("Error removing member:", err.message);
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Internal server error" });
     }
 }
 
@@ -221,7 +266,7 @@ const leaveRoom = async (req, res) => {
         // leave room
         await prisma.chatRoomMember.delete({
             where: { 
-                chat_id_user_id: { 
+                user_id_chat_id: { 
                     chat_id: chatId, 
                     user_id: userId 
                 } 
@@ -256,15 +301,12 @@ const getReadStatus = async (req, res) => {
 
 const updateReadStatus = async (req, res) => {
     try {
-        console.log(req.params)
         const { chatId, userId } = req.params;
 
         await prisma.chatRoomRead.updateMany({
             where: { 
-                user_id_chat_id: {
-                    chat_id: chatId, 
-                    user_id: userId 
-                }
+                chat_id: chatId, 
+                user_id: userId
             },
             data: { unread: false }
         });
@@ -296,7 +338,7 @@ const loadMessages = async (req, res) => {
         // get last message ID to use as cursor for next request
         const nextCursor = messages.length === limit ? messages[messages.length - 1].id : null;
 
-        res.json({
+        return res.json({
             messages,
             cursor: nextCursor,
             hasMore: !!nextCursor
@@ -304,7 +346,7 @@ const loadMessages = async (req, res) => {
 
     } catch (err) {
         console.error("Error loading messages:", err.message);
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Internal server error" });
     }
 };
 
@@ -344,7 +386,7 @@ const loadChatRooms = async (req, res) => {
         // Get last chat room ID for next request
         const nextCursor = chatRooms.length === limit ? chatRooms[chatRooms.length - 1].id : null;
 
-        res.json({
+        return res.json({
             chatRooms: chatRooms,
             cursor: nextCursor, // Use this cursor for next request
             hasMore: !!nextCursor
@@ -352,7 +394,7 @@ const loadChatRooms = async (req, res) => {
 
     } catch (err) {
         console.error("Error loading chat rooms:", err.message);
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Internal server error" });
     }
 };
 
@@ -374,7 +416,7 @@ const getMembers = async (req, res) => {
     }
     catch (err) {
         console.error("Error loading chat rooms:", err.message);
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Internal server error" });
     }
 }
 
@@ -396,7 +438,7 @@ const getPendingMembers = async (req, res) => {
     }
     catch (err) {
         console.error("Error loading chat rooms:", err.message);
-        res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Internal server error" });
     }
 }
 
@@ -421,8 +463,8 @@ module.exports = {
     loadMessages,
     loadChatRooms,
     isAdmin,
-    updateRoomDescription,
-    approveMember,
+    updateRoomData,
+    handleMemberRequest,
     removeMember,
     leaveRoom,
     getReadStatus,
