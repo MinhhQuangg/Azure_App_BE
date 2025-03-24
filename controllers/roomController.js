@@ -266,32 +266,35 @@ const leaveRoom = async (req, res) => {
                     where: { id: chatId },
                     data: { admin_id: newAdmin.user_id }
                 });
+
+                // leave room
+                await prisma.chatRoomMember.delete({
+                    where: { 
+                        user_id_chat_id: { 
+                            chat_id: chatId, 
+                            user_id: userId 
+                        } 
+                    }
+                });
+
+                await prisma.chatRoomRead.delete({
+                    where: { 
+                        user_id_chat_id: { 
+                            chat_id: chatId, 
+                            user_id: userId 
+                        } 
+                    }
+                });
+
             } 
             else {
                 // no members left -> delete the chat room
+                const a = await prisma.chatRoom.findMany({
+                    where: { id: chatId, admin_id: userId },
+                });
                 await prisma.chatRoom.delete({ where: { id: chatId } });
             }
         }
-        
-        // leave room
-        await prisma.chatRoomMember.delete({
-            where: { 
-                user_id_chat_id: { 
-                    chat_id: chatId, 
-                    user_id: userId 
-                } 
-            }
-        });
-
-        await prisma.chatRoomRead.delete({
-            where: { 
-                user_id_chat_id: { 
-                    chat_id: chatId, 
-                    user_id: userId 
-                } 
-            }
-        });
-
         return res.json({ message: userId + " has left the chat room"});
     }
     catch (err) {
