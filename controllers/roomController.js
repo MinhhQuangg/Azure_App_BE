@@ -149,15 +149,25 @@ const requestJoin = async (req, res) => {
         const { chatId } =  req.params;
         const { userId } = req.body;
 
-        await prisma.chatRoomMember.create({
-            data: { 
+        const requested = await prisma.chatRoomMember.findFirst({
+            where: { 
                 user_id: userId,
                 chat_id: chatId,
                 status: MemberStatus.PENDING
             }
         })
 
-        return res.json({ message: "Join request sent from " + userId })
+        if (requested == null) {
+            await prisma.chatRoomMember.create({
+                data: { 
+                    user_id: userId,
+                    chat_id: chatId,
+                    status: MemberStatus.PENDING
+                }
+            })
+            return res.json({ message: "Join request sent from " + userId })
+        }
+        return res.json({ message: userId + " already sent request to join."})
     }
     catch (err) {
         console.error("Error requesting to join:", err.message);
@@ -340,37 +350,52 @@ const updateReadStatus = async (req, res) => {
     }
 }
 
-// load message for chat room
 const loadMessages = async (req, res) => {
     try {
         const { chatroomId } = req.params;
-        const cursor = req.query.cursor || null; // the last loaded message ID (for pagination)
-        const limit = 20; // max 20 messages per request
+        const cursor = req.query.cursor || null;
+        const limit = 20;
 
+        console.log(cursor)
+    
         const messages = await prisma.message.findMany({
-            where: { chatroom_id: chatroomId },
-            orderBy: { created_at: "asc" }, 
+            where: { chat_id: chatroomId },
+            orderBy: { created_at: "desc" },
             take: limit,
-            cursor: cursor ? { id: cursor } : undefined,
+            ...(cursor && {
+            skip: 1,
+            cursor: { id: cursor },
+            }),
             include: {
-                sender: { select: { given_name: true, profile_picture: true } }
-            }
+            sender: {
+                select: {
+                given_name: true,
+                profile_picture: true,
+                },
+            },
+            },
         });
-
-        // get last message ID to use as cursor for next request
-        const nextCursor = messages.length === limit ? messages[messages.length - 1].id : null;
-
+    
+        const oldest = await prisma.message.findFirst({
+            where: { chat_id: chatroomId },
+            orderBy: { created_at: "asc" },
+            select: { id: true },
+        });
+    
+        console.log(messages)
+        const hasMore = oldest && !messages.some((msg) => msg.id === oldest?.id);
+        
         return res.json({
-            messages,
-            cursor: nextCursor,
-            hasMore: !!nextCursor
+            messages: messages.reverse(),
+            cursor: hasMore ? messages[0]?.id : null,
+            hasMore,
         });
-
     } catch (err) {
-        console.error("Error loading messages:", err.message);
-        return res.status(500).json({ error: "Internal server error" });
+      console.error("Error loading messages:", err.message);
+      return res.status(500).json({ error: "Internal server error" });
     }
 };
+
 
 // load latest chat rooms for user
 const loadChatRooms = async (req, res) => {
@@ -499,6 +524,55 @@ const changeAdmin = async (req, res) => {
     }
 }
 
+const isMember = async (req, res) => {
+    try {
+        const { chatId, userId } = req.params;
+        const findMem = await prisma.chatRoomMember.findFirst({
+            where: {
+                chat_id: chatId,
+                user_id: userId,
+                status: 'approved'
+            }
+        });
+
+        console.log(findMem)
+          
+        return res.json({isMember: findMem != null, chatroom: findMem})
+    }
+    catch (err) {
+        console.error("Failed to check member status:", err.message);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+const getPendingRooms = async (req, res) => {
+    const { userId } = req.params;
+  
+    try {
+        const pendingRooms = await prisma.chatRoomMember.findMany({
+            where: {
+            user_id: userId,
+            status: "pending",
+            },
+            include: {
+            chatRoom: true, // include chat room details
+            },
+        });
+    
+        const sortedRooms = pendingRooms
+            .filter(r => r.chatRoom) // ensure chatRoom exists
+            .sort((a, b) => new Date(b.chatRoom.updated_at) - new Date(a.chatRoom.updated_at));
+
+        const rooms = sortedRooms.map((entry) => entry.chatRoom);
+  
+      return res.json({ pendingRooms: rooms });
+    } catch (err) {
+      console.error("Error fetching pending rooms:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  
+
 module.exports = { 
     createRoom,
     requestJoin,
@@ -514,5 +588,7 @@ module.exports = {
     updateReadStatus,
     getMembers,
     getPendingMembers,
-    changeAdmin
+    changeAdmin,
+    isMember,
+    getPendingRooms
 }

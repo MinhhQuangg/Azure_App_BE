@@ -14,11 +14,34 @@ exports.createMessage = async (req, res) => {
         .json({ error: "Missing required fields (roomId, text, userId)." });
     }
 
+    // 1. Create the new message
     const newMessage = await prisma.message.create({
       data: {
         content: text,
         created_by: userId,
         chat_id: roomId,
+      },
+    });
+
+    // 2. Update the last_message field of the room
+    await prisma.chatRoom.update({
+      where: { id: roomId },
+      data: {
+        last_message: text,
+        updated_at: new Date(),
+      },
+    });
+
+    // 3. Update read status for all users (set unread = true), except sender
+    await prisma.chatRoomRead.updateMany({
+      where: {
+        chat_id: roomId,
+        NOT: {
+          user_id: userId,
+        },
+      },
+      data: {
+        unread: true,
       },
     });
 
