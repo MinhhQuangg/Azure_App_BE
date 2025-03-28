@@ -60,7 +60,7 @@ The app uses a Client-Server architecture, with WebSocket (Socket.IO) handling r
 - PostgreSQL
 
 ## Try It Out
-- [Live Demo](https://www.youtube.com/watch?v=Q3Jx4viHm-g)
+- [Demo Video](https://www.youtube.com/watch?v=Q3Jx4viHm-g)
 
 ## Running the Backend
 
