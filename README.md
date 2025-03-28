@@ -79,7 +79,7 @@ Create a .env file in the root directory and add the following environment varia
 
 ```
 DB_HOST= <DB_HOST>
-# [DB_NAME].postgres.database.azure.com
+# [Name of PostgreSQL database server].postgres.database.azure.com
 DB_USER=<DB_USER>
 DB_PASSWORD=<DB_PASSWORD>
 DB_NAME=postgres
